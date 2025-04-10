@@ -30,3 +30,5 @@ yarn-error.log*
 
 # vercel
 .vercel
+# Ignore all contents inside the target folder
+/rust/target/
