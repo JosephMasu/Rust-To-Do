@@ -1,4 +1,4 @@
-use actix_web::{get, web, App, HttpServer, Responder, HttpResponse};
+use actix_web::{ web, App, HttpServer, Responder, HttpResponse};
 use serde::{Serialize, Deserialize};
 use actix_cors::Cors;
 use uuid::Uuid;
@@ -66,7 +66,7 @@ async fn update_todo_item(path: web::Path<Uuid>, item: web::Json<UpdateTodoItem>
 
 async fn delete_todo_item(path: web::Path<Uuid>, data: web::Data<AppState>) -> impl Responder {
     let mut todos = data.todos.lock().unwrap();
-    if let Some(index) = todos.iter().position(|t| t.id == *path) {
+    if let Some(_index) = todos.iter().position(|t| t.id == *path) {
         todos.retain(|t| t.id != *path);
         HttpResponse::Ok().json(&*todos)
     } else {
@@ -74,6 +74,25 @@ async fn delete_todo_item(path: web::Path<Uuid>, data: web::Data<AppState>) -> i
     }
 }
                     
-fn main() {
-    
+#[actix_web::main]
+
+async fn main() -> std::io::Result<()> {
+    let app_state = web::Data::new(AppState {
+        todos: Mutex::new(Vec::new()),
+    });
+    HttpServer::new(move || {
+        App::new()
+            .app_data(app_state.clone())
+            .wrap(Cors::permissive())
+            .service(
+                web::scope("/todos")
+                    .route("", web::get().to(get_todos))
+                    .route("", web::post().to(create_todo))
+                    .route("/{id}", web::put().to(update_todo_item))
+                    .route("/{id}", web::delete().to(delete_todo_item))
+            )
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
 }
