@@ -81,18 +81,20 @@ async fn main() -> std::io::Result<()> {
         todos: Mutex::new(Vec::new()),
     });
     HttpServer::new(move || {
+        let cors = Cors::default()
+            .allow_any_origin()
+            .allow_any_method()
+            .allow_any_header()
+            .max_age(3600);
+
         App::new()
             .app_data(app_state.clone())
-            .wrap(Cors::permissive())
-            .service(
-                web::scope("/todos")
-                    .route("", web::get().to(get_todos))
-                    .route("", web::post().to(create_todo))
-                    .route("/{id}", web::put().to(update_todo_item))
-                    .route("/{id}", web::delete().to(delete_todo_item))
-            )
-    })
-    .bind("127.0.0.1:8080")?
-    .run()
-    .await
+            .wrap(cors).route("/todos", web::get().to(get_todos))
+            .route("/todos", web::post().to(create_todo))
+            .route("/todos/{id}", web::put().to(update_todo_item))
+            .route("/todos/{id}", web::delete().to(delete_todo_item))
+        })
+
+            .bind("127.0.0.1:8080")?
+            .run().await
 }
