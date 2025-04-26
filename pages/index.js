@@ -1,108 +1,169 @@
-import React,{useState, useEffect} from 'react';
-import { MdDelete, MdEdit, MdDone, MdConfirmationNumber } from 'react-icons/md';
+import React, { useState, useEffect } from 'react';
+import { MdDelete, MdEdit } from 'react-icons/md';
 import axios from 'axios';
-import {format} from 'date-fns';
-import { CgLayoutGrid } from 'react-icons/cg';
+import { format } from 'date-fns';
 
-const index = () => {
-  const [editText, setEditText] = useState();
+const Index = () => {
+  const [editText, setEditText] = useState("");
   const [todos, setTodos] = useState([]);
-  const [todosCopy, setTodosCopy] = useState(todos);
-  const [todoInput, setTodoInput] = useState();
+  const [todosCopy, setTodosCopy] = useState([]);
+  const [todoInput, setTodoInput] = useState("");
   const [editIndex, setEditIndex] = useState(-1);
-  const [searchResults, setSearchResults] = useState("");
-  const [searchInputs, setSearchInputs] = useState([]);
+  const [search, setSearch] = useState("");
   
-
   const [count, setCount] = useState(0);
-  const [serch, setSerch] = useState("");
-  const [searchItem, setSearchItem] = useState(serch)
-
 
   useEffect(() => {
-    axios.get("http://localhost:8080/todos")
     fetchTodos();
   }, [count]);
 
-  const editTodo = (index)=>{
-    setEditIndex(index);
-    setTodoInput(todos[index].title);
-  }
-
-  const fetchTodos = async()=>{
+  const fetchTodos = async () => {
     try {
       const response = await axios.get("http://localhost:8080/todos");
       setTodos(response.data);
       setTodosCopy(response.data);
-      console.log(response);
     } catch (error) {
       console.log(error);
     }
-  }
+  };
 
-  const addTodos = async()=>{
+  const addTodos = async () => {
     try {
-      if(editIndex === -1){
+      if (editIndex === -1) {
         const response = await axios.post("http://localhost:8080/todos", {
           title: todoInput,
           completed: false,
         });
-        setTodos(response.data);      
-        setTodosCopy(response.data);
+        setCount(count + 1); // trigger refetch
         setTodoInput("");
-      }else{
-        const todoToUpdate = {...todos[editIndex], title: todoInput};
-        const response = await axios.put(`http://localhost:8080/todos/${todoToUpdate.id}`, {
-          todoToUpdate,
-        });
-        console.log(response);
-        const updateTodos = [...todos]
-        updateTodos[editIndex] = response.data;
-        setTodos(updateTodos);
+      } else {
+        const todoToUpdate = { ...todos[editIndex], title: todoInput };
+        await axios.put(`http://localhost:8080/todos/${todoToUpdate.id}`, todoToUpdate);
+        
+        setEditIndex(-1);
         setTodoInput("");
-        setEditIndex(-1);     
         setCount(count + 1);
       }
     } catch (error) {
       console.log(error);
     }
-  }
+  };
 
-  const deleteTodo = async(id)=>{
+  const deleteTodo = async (id) => {
     try {
-      await axios.delete(`http://localhost:8080/todos/${id}`, {
-        todoToUpdate,});
-      setTodos(todos.filter((todo)=>todo.id !== id));
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  const toggleCompleted = async(index)=>{
-    try {
-      const todoToUpdate = {...todos[index], completed: !todos[index].completed};
-  
-      await axios.delete(`http://localhost:8080/todos/${id}`, {
-        todoToUpdate,});
-      const updateTodos = [...todos];
-      updateTodos[index] = todoToUpdate;
-      setTodos(updateTodos);
+      await axios.delete(`http://localhost:8080/todos/${id}`);
       setCount(count + 1);
     } catch (error) {
       console.log(error);
     }
-  }
+  };
 
-  const formatDate = (dateString)=>{
+  const toggleCompleted = async (index) => {
+    try {
+      const todoToUpdate = { ...todos[index], completed: !todos[index].completed };
+      await axios.put(`http://localhost:8080/todos/${todoToUpdate.id}`, todoToUpdate);
+
+      setCount(count + 1);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const editTodo = (index) => {
+    setEditIndex(index);
+    setTodoInput(todos[index].title);
+  };
+
+  const formatDate = (dateString) => {
     return format(new Date(dateString), "dd/MM/yyyy HH:mm");
-  }
+  };
 
-  const searchTodos = () =>{
-    const filteredTodos = todos.filter((todo)=>todo.title.toLowerCase().includes(searchInputs.toLowerCase()));
+  const onHandleSearch = (value) => {
+    const filteredTodos = todosCopy.filter(({ title }) =>
+      title.toLowerCase().includes(value.toLowerCase())
+    );
+
     setTodos(filteredTodos);
-  
-  } 
-  return <div>index</div>;  
+  };
+
+  const onClearSearch = () => {
+    setTodos(todosCopy);
+  };
+
+  useEffect(() => {
+    if (search) {
+      onHandleSearch(search);
+    } else {
+      onClearSearch();
+    }
+  }, [search]);
+
+  const renderTodos = () => {
+    return todos.map((todo, index) => (
+      <li className='li' key={todo.id}>
+        <label className='form-check-label'>
+          <input
+            type="checkbox"
+            checked={todo.completed}
+            onChange={() => toggleCompleted(index)}
+          />
+          <span className='todo-text'>
+            {`${todo.title} (${formatDate(todo.created_at)})`}
+          </span>
+        </label>
+
+        <span className='span-button' onClick={() => deleteTodo(todo.id)}>
+          <MdDelete />
+        </span>
+        <span className='span-button' onClick={() => editTodo(index)}>
+          <MdEdit />
+        </span>
+      </li>
+    ));
+  };
+
+  return (
+    <div className='main-body'>
+      <div className='todo-app'>
+        <div className='input-section'>
+          <input 
+            type='text' 
+            id='todoInput' 
+            placeholder='Add item...' 
+            value={todoInput} 
+            onChange={(e) => setTodoInput(e.target.value)}
+          />
+          <button onClick={addTodos} className='add'>
+            {editIndex === -1 ? "Add" : "Update"}
+          </button>
+
+          <input 
+            type='text' 
+            id='search-input' 
+            placeholder='Search item...' 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button onClick={() => setSearch("")}>
+            Clear Search
+          </button>
+        </div>
+
+        <div className='todos'>
+          <ul className='todo-list'>
+            {renderTodos()}
+          </ul>
+
+          {todos.length === 0 && (
+            <div>
+              <img className='face' src='/theblockchaincoders.jpg' alt='No todos available' />
+              <h1 className='not-found'>No todos available</h1>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
-export default index;
+export default Index;
